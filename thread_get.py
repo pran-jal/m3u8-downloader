@@ -1,5 +1,6 @@
 import requests
 import threading
+import url
 
 def gets(i, url):
     print(f'getting {i} ....')

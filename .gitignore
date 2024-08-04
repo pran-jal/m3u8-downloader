@@ -1,4 +1,9 @@
 */
-main.py
+
 *.mp4
 /*.mp4
+
+
+main.py
+test.py
+*.ipynb
