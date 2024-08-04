@@ -47,59 +47,60 @@ global is_vod
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
-    def send_head(self):
-        """Serve a GET request."""
-        path = self.translate_path(self.path)
-        """Handle requests for listing directory"""
-        if os.path.isdir(path):
-            if not self.path.endswith('/'):
-                # redirect browser - doing basically what apache does
-                self.send_response(301)
-                self.send_header("Location", self.path + "/")
-                self.end_headers()
-                return None
-            for index in "index.html", "index.htm":
-                index = os.path.join(path, index)
-                if os.path.exists(index):
-                    path = index
-                    break
-            else:
-                return self.list_directory(path)
-        file_name = os.path.basename(path)
-        f = None
-        try:
-            content_type = ""
-            # We don't support directory listing
-            if os.path.isdir(path):
-                raise Exception("Illegal url of directory type")
-            # If request media segment, return it
-            if file_name.endswith(".ts"):
-                content_type = "video/mp2t"
-            # If request master playlist, return it (it's already prepared
-            if self.path == "/playlist.m3u8":
-                content_type = "application/vnd.apple.mpegurl"
-            # If request variant playlist, we need to generate it
-            match = re.match(r"/index-(?P<variant_index>\d+).m3u8", self.path)
-            if match:
-                generate_variant_playlist(int(match.group("variant_index")))
-                content_type = "application/vnd.apple.mpegurl"
-            if not content_type:
-                raise Exception("Illegal url")
-            # Now create the header
-            f = open(path, 'rb')
-            content_length = str(os.fstat(f.fileno())[6])
-            self.send_response(200)
-            self.send_header("Content-type", content_type)
-            self.send_header("Content-Length", content_length)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-        except IOError as e:
-            # 404 File Not found
-            self.send_error(404, e)
-        except Exception as e:
-            # 500 internal server error
-            self.send_error(500, e)
-        return f
+    def do_GET(self):
+        if self.path == '/ts_sample/index.m3u8':
+            self.path = 'index.html'
+            return http.server.SimpleHTTPRequestHandler.do_GET(self)
+        return self.send_head()
+
+    # def send_head(self):
+    #     """Serve a GET request."""
+    #     path = self.translate_path(self.path)
+    #     """Handle requests for listing directory"""
+    #     if os.path.isdir(path):
+    #         if not self.path.endswith('/'):
+    #             # redirect browser - doing basically what apache does
+    #             self.send_response(301)
+    #             self.send_header("Location", self.path + "/")
+    #             self.end_headers()
+    #             return None
+    #         for index in "index.html", "index.htm":
+    #             index = os.path.join(path, index)
+    #             if os.path.exists(index):
+    #                 path = index
+    #                 break
+    #         else:
+    #             return self.list_directory(path)
+    #     file_name = os.path.basename(path)
+    #     f = None
+    #     try:
+    #         content_type = ""
+    #         # We don't support directory listing
+    #         if os.path.isdir(path):
+    #             raise Exception("Illegal url of directory type")
+    #         # If request media segment, return it
+    #         if file_name.endswith(".ts"):
+    #             content_type = "video/mp2t"
+    #         # If request master playlist, return it (it's already prepared
+    #         if self.path.endswith(".m3u8"):
+    #             content_type = "application/vnd.apple.mpegurl"
+    #         if not content_type:
+    #             raise Exception("Illegal url")
+    #         # Now create the header
+    #         f = open(path, 'rb')
+    #         content_length = str(os.fstat(f.fileno())[6])
+    #         self.send_response(200)
+    #         self.send_header("Content-type", content_type)
+    #         self.send_header("Content-Length", content_length)
+    #         self.send_header("Access-Control-Allow-Origin", "*")
+    #         self.end_headers()
+    #     except IOError as e:
+    #         # 404 File Not found
+    #         self.send_error(404, e)
+    #     except Exception as e:
+    #         # 500 internal server error
+    #         self.send_error(500, e)
+    #     return f
 
 
 
@@ -145,5 +146,9 @@ def main():
     # Start webserver
     Handler = CustomHTTPRequestHandler
     httpd = socketserver.TCPServer(("", port), Handler)
-    print("Watch stream at: http://{}:{}/playlist.m3u8".format(get_ip_address(), port))
+    print("Watch stream at: http://{}:{}/ts_sample/index.m3u8".format(get_ip_address(), port))
     httpd.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
