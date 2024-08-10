@@ -36,10 +36,9 @@
 import http.server
 import socketserver
 import os
+import requests
 import socket
-import time
 import re
-import argparse
 
 global master_playlist
 global start_time
@@ -55,16 +54,6 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
             return self.m3u8()
     
-    def m3u8(self):
-        file_name = os.path.basename(self.path)
-
-        f = open("ts_sample/"+file_name, 'rb') #TODO 
-        """ handle here the code which gets all the .ts parts of any m3u8 file.
-         with path as map key return the right part in order to create the completed file
-        """
-        return f
-    
-
         # might be required to handle the m3u8s with headers, keys, signatures, etc
         # def mp4(self):
         #     f = open("ts_sample/lol.mp4", "rb")
@@ -79,42 +68,64 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     
 
     #how to handle multiple url requests from same endpoint
-    # def test_m3u8(self):
-    #     file_name = os.path.basename(self.path)
-    #     try:
-    #         # If request media segment, return it
-    #         if file_name.endswith(".ts"):
-    #             content_type = "video/mp2t"
-    #         # If request master playlist, return it (it's already prepared
-    #         if self.path.endswith(".m3u8"):
-    #             content_type = "application/vnd.apple.mpegurl"
-    #         if not content_type:
-    #             raise Exception("Illegal url")
-    # #         # Now create the header
-    #         f = open("ts_sample/"+file_name, 'rb')
-    #         content_length = str(os.fstat(f.fileno())[6])
-    #         self.send_response(200)
-    #         self.send_header("Content-type", content_type)
-    #         self.send_header("Content-Length", content_length)
-    #         self.send_header("Access-Control-Allow-Origin", "*")
-    #         self.end_headers()
-    #         self.wfile.write(f.read())
-    #     except IOError as e:
-    #         # 404 File Not found
-    #         print(e)
-    #         self.send_error(404, e)
-    #     except Exception as e:
-    #         # 500 internal server error
-    #         self.send_error(500, e)
-    #     return f
+    def m3u8(self):
+        file_name = os.path.basename(self.path)
+        try:
+            # If request media segment, return it
+            if file_name.endswith(".ts"):
+                content_type = "video/mp2t"
+            # If request master playlist, return it (it's already prepared
+            if self.path.endswith(".m3u8"):
+                # application/x-mpegURL
+                # application/vnd.apple.mpegurl
+                # application/vnd.apple.mpegURL
+                content_type = "application/x-mpegURL"
+            if not content_type:
+                raise Exception("Illegal url")
+    #         # Now create the header
+            f = open("ts_sample/"+file_name, 'rb')
+            content_length = str(os.fstat(f.fileno())[6])
+            self.send_response(200)
+            self.send_header("Content-type", content_type)
+            self.send_header("Content-Length", content_length)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(f.read())
+        except IOError as e:
+            # 404 File Not found
+            print(e)
+            self.send_error(404, e)
+        except Exception as e:
+            # 500 internal server error
+            self.send_error(500, e)
+        return f
 
 
 # need to check if works with no internet connection ie by using localhost
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(('8.8.8.8', 0))  # connecting to a UDP address doesn't send packets
-    return s.getsockname()[0]
+    add_name = s.getsockname()[0]
+    print(add_name)
+    if s.connect_ex((add_name, 8000)):
+        print("Default Port Not Available. Please provide an alternative port.")
+    return add_name
 
+
+def generate_all_urls_from_m3u8(url):
+    master_m3u8_text = requests.get(url).text
+
+    # print(re.subn(r"^#.[\n,]", "", master_m3u8_text))
+    a = []
+    b = master_m3u8_text.split("\n")
+    # print(b)
+    for i in b:
+        if not i.startswith("#") and i:
+            a.append(i)
+        # filter("", a)
+    new_service_url_prefix = url.replace(url.split("/").pop(), "")
+    print(new_service_url_prefix)
+    print(a)
 
 def main():
     Handler = CustomHTTPRequestHandler
@@ -123,4 +134,6 @@ def main():
     httpd.serve_forever()
 
 if __name__ == "__main__":
-    main()
+    #tested with using server. file pathe method worked fine if file is saved but what if file in in momory. that requires the use of temp server.
+    # main()
+    generate_all_urls_from_m3u8("http://192.168.1.3:8000/ts_sample/index.m3u8")
