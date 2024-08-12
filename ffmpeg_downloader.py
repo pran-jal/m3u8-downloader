@@ -51,12 +51,15 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.path = 'index.html'
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         # elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
+        #     return self.m3u8()
         elif self.path.startswith("/fake"):
-            return self.m3u8()
-            # return self.fake()
+            return self.fake()
         
-    def fake():
-        return requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+    def fake(self):
+        f = requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(f)
 
     
         # might be required to handle the m3u8s with headers, keys, signatures, etc
@@ -77,27 +80,27 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         file_name = os.path.basename(self.path)
         try:
             # If request media segment, return it
-            # if self.path.endswith(".m3u8"):
+            if self.path.endswith(".m3u8"):
                 # audio/mpegurl
                 # application/x-mpegURL
-                # content_type = "audio/mpegurl"
-            # if file_name.endswith(".ts"):
+                content_type = "audio/mpegurl"
+            if file_name.endswith(".ts"):
                 # "application/x-mpegURL"
                 # application/vnd.apple.mpegurl
                 # application/vnd.apple.mpegURL
                 # application/octet-stream
-            content_type = "application/octet-stream"
-            # if not content_type:
-                # raise Exception("Illegal url")
+                content_type = "application/octet-stream"
+            if not content_type:
+                raise Exception("Illegal url")
     #         # Now create the header
-            f = requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
-            content_length = str(len(f))
+            f = open("ts_sample/"+file_name, 'rb')
+            content_length = str(os.fstat(f.fileno())[6])
             self.send_response(200)
             self.send_header("Content-type", content_type)
             self.send_header("Content-Length", content_length)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(f)
+            self.wfile.write(f.read())
         except IOError as e:
             # 404 File Not found
             print(e)
