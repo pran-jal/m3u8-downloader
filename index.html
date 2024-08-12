@@ -3,22 +3,31 @@
 </head>
 <body>
     <video controls width="100%" height="100%">
-        <source src="ts_sample/index.m3u8" type="application/x-mpegURL"/>
+        <source src="ts_sample/index.m3u8" type="audio/mpegurl"/>
     </video>
 
 
-    <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>    
+    <!-- <script src="https://www.hlsplayer.org/assets/js/hls.js?v=1723483677"></script>    
     <video id="video"></video>
-        <script>
-        if (Hls.isSupported()) {
-            var video = document.getElementById('video');
-            var hls = new Hls();
-            hls.loadSource('ts_sample/index.m3u8');
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                video.play();
-            });
-        } 
+    <script>
+        var video = document.getElementById('video');
+            var videoSrc = decodeURIComponent(url);
+
+            if (Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    video.play();
+                });
+                document.title = url;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoSrc;
+                video.addEventListener('loadedmetadata', function () {
+                    video.play();
+                });
+                document.title = url;
+            }
     </script> -->
 </body>
 

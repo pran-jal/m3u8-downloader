@@ -38,11 +38,10 @@ import socketserver
 import os
 import requests
 import socket
-import re
+import ffmpeg
+import threading
+import time
 
-global master_playlist
-global start_time
-global is_vod
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
@@ -51,8 +50,14 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == '/index.html':
             self.path = 'index.html'
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
-        elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
+        # elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
+        elif self.path.startswith("/fake"):
             return self.m3u8()
+            # return self.fake()
+        
+    def fake():
+        return requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+
     
         # might be required to handle the m3u8s with headers, keys, signatures, etc
         # def mp4(self):
@@ -72,25 +77,27 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         file_name = os.path.basename(self.path)
         try:
             # If request media segment, return it
-            if file_name.endswith(".ts"):
-                content_type = "video/mp2t"
-            # If request master playlist, return it (it's already prepared
-            if self.path.endswith(".m3u8"):
+            # if self.path.endswith(".m3u8"):
+                # audio/mpegurl
                 # application/x-mpegURL
+                # content_type = "audio/mpegurl"
+            # if file_name.endswith(".ts"):
+                # "application/x-mpegURL"
                 # application/vnd.apple.mpegurl
                 # application/vnd.apple.mpegURL
-                content_type = "application/x-mpegURL"
-            if not content_type:
-                raise Exception("Illegal url")
+                # application/octet-stream
+            content_type = "application/octet-stream"
+            # if not content_type:
+                # raise Exception("Illegal url")
     #         # Now create the header
-            f = open("ts_sample/"+file_name, 'rb')
-            content_length = str(os.fstat(f.fileno())[6])
+            f = requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+            content_length = str(len(f))
             self.send_response(200)
             self.send_header("Content-type", content_type)
             self.send_header("Content-Length", content_length)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(f.read())
+            self.wfile.write(f)
         except IOError as e:
             # 404 File Not found
             print(e)
@@ -127,6 +134,18 @@ def generate_all_urls_from_m3u8(url):
     print(new_service_url_prefix)
     print(a)
 
+
+def get_url_video(url):
+    return requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+
+
+def download_m3u8_with_ffmpeg(m3u8_url):
+    threading.Thread(target=main,args=()).start()
+    print("server hosted")
+    time.sleep(5)
+    ffmpeg.input(f"http://{get_ip_address()}:8000/fake.lol").output("ts_sample/test3.mp4", vcodec="copy", acodec="copy").overwrite_output().run()
+
+
 def main():
     Handler = CustomHTTPRequestHandler
     httpd = socketserver.TCPServer(("", 8000), Handler)
@@ -135,5 +154,6 @@ def main():
 
 if __name__ == "__main__":
     #tested with using server. file pathe method worked fine if file is saved but what if file in in momory. that requires the use of temp server.
-    # main()
-    generate_all_urls_from_m3u8("http://192.168.1.3:8000/ts_sample/index.m3u8")
+    main()
+    # download_m3u8_with_ffmpeg("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts")
+    # generate_all_urls_from_m3u8("http://192.168.1.3:8000/ts_sample/index.m3u8")
