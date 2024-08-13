@@ -44,7 +44,7 @@ import time
 
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-
+    
     def do_GET(self):
         print(self.path)
         if self.path == '/index.html':
@@ -52,11 +52,11 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         # elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
         #     return self.m3u8()
-        elif self.path.startswith("/fake"):
+        elif self.path.endswithswith(".fake"):
             return self.fake()
         
     def fake(self):
-        f = requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+        f = self.fakes[os.path.basename(self.path)]
         self.send_response(200)
         self.end_headers()
         self.wfile.write(f)
@@ -73,7 +73,6 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         #     self.end_headers()
         #     self.wfile.write(f.read())
         #     # return f
-    
 
     #how to handle multiple url requests from same endpoint
     def m3u8(self):
@@ -112,51 +111,72 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 # need to check if works with no internet connection ie by using localhost
-def get_ip_address():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(('8.8.8.8', 0))  # connecting to a UDP address doesn't send packets
-    add_name = s.getsockname()[0]
-    print(add_name)
-    if s.connect_ex((add_name, 8000)):
-        print("Default Port Not Available. Please provide an alternative port.")
-    return add_name
+# def get_ip_address():
+#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     s.connect(('8.8.8.8', 0))  # connecting to a UDP address doesn't send packets
+#     add_name = s.getsockname()[0]
+#     print(add_name)
+#     if s.connect_ex((add_name, 8000)):
+#         print("Default Port Not Available. Please provide an alternative port.")
+#     return add_name
 
 
 def generate_all_urls_from_m3u8(url):
     master_m3u8_text = requests.get(url).text
-
-    # print(re.subn(r"^#.[\n,]", "", master_m3u8_text))
     a = []
     b = master_m3u8_text.split("\n")
-    # print(b)
     for i in b:
         if not i.startswith("#") and i:
             a.append(i)
-        # filter("", a)
     new_service_url_prefix = url.replace(url.split("/").pop(), "")
-    print(new_service_url_prefix)
-    print(a)
+    
+    fakes_map = {}
+    for index,service_url in enumerate(a):
+        fakes_map[f"{index}.fake"] = new_service_url_prefix + service_url
+        master_m3u8_text = master_m3u8_text.replace(service_url, f"{index}.fake")
+
+    return fakes_map, master_m3u8_text
 
 
-def get_url_video(url):
-    return requests.get("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts").content
+    def gets(part):
+        print(f'getting {part} ....')
+        c = requests.get(part)
+        if c.status_code != 200:
+            print("failed to download.")
+            exit()
+        
+        fakes[part] = c.content
+        threadss.pop(part)
+
+    def download_parts(parts):
+        threadss = []
+        for part in parts:
+            t = threading.Thread(target=gets,args=(part,))
+            threadss.append(t)
+            t.start()
+
+        for i in threadss:
+            t.join()                # to keep program running till last thread is completed, seartg join()
+    
+        for t in threadss:
+            while t.is_alive() :
+                continue
 
 
-def download_m3u8_with_ffmpeg(m3u8_url):
-    threading.Thread(target=main,args=()).start()
-    print("server hosted")
-    time.sleep(5)
-    ffmpeg.input(f"http://{get_ip_address()}:8000/fake.lol").output("ts_sample/test3.mp4", vcodec="copy", acodec="copy").overwrite_output().run()
+def download_m3u8_with_ffmpeg(m3u8_url, download_file_name):
+    threading.Thread(target=start_server, args=()).start()
+    fakes_map, m3u8_file = generate_all_urls_from_m3u8(m3u8_url)
+    print(m3u8_file)
+    # key = "index0.ts"
+    # ffmpeg.input(f"http://localhost:8000/fake.part?key={key}").output(f"{download_file_name}.mp4", vcodec="copy", acodec="copy").overwrite_output().run()
 
 
-def main():
+def start_server():
     Handler = CustomHTTPRequestHandler
     httpd = socketserver.TCPServer(("", 8000), Handler)
-    print("Watch stream at: http://{}:{}/index.html".format(get_ip_address(), 8000))
     httpd.serve_forever()
 
 if __name__ == "__main__":
     #tested with using server. file pathe method worked fine if file is saved but what if file in in momory. that requires the use of temp server.
-    main()
-    # download_m3u8_with_ffmpeg("https://test-streams.mux.dev/x36xhzz/url_8/url_653/193039199_mp4_h264_aac_fhd_7.ts")
+    download_m3u8_with_ffmpeg("https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8", "test5.mp4")
     # generate_all_urls_from_m3u8("http://192.168.1.3:8000/ts_sample/index.m3u8")
