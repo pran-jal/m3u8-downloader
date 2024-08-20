@@ -1,40 +1,18 @@
 import subprocess
 import url
 import threading
-import requests as r
-
-url = url.url
-c = 'cd 10'
 
 def gets(i):
-    print(f'getting {i} ....')
-    s = 'ffmpeg -i "%s%04d.ts" -c copy %04d.ts -v 0' %(url, i, i)
-    subprocess.run(["powershell", "-command", "%s; %s" %(c, s)] )
-    print(f' done {i} ...')
-
-
-
-# for j in range (1, 47):
-
-#     threadss = []
-#     for i in range((j-1)*10, j*10) :
-#         t = threading.Thread(target=gets,args=(i,))
-#         threadss.append(t)
-#         t.start()
-
-#     for i in threadss:
-#         t.join()                # to keep program running till last thread is completed, seartg join()
-
-#     for t in threadss:
-#         while t.is_alive() :
-#             continue
-
+    s = 'ffmpeg -i "%s" -c copy my_vids\%d.ts -y' %(url.url.format(i), i)
+    subprocess.run(["powershell", "-command", "%s" %(s)] )
 
 threadss = []
-for i in range (474):
+lol_str = "concat:"
+for i in range (590, 654):
+    lol_str+=f"my_vids\\{i}.ts|"
     t = threading.Thread(target=gets,args=(i,))
-    threadss.append(t)
     t.start()
+    threadss.append(t)
 
 for i in threadss:
     t.join()                # to keep program running till last thread is completed, seartg join()
@@ -42,3 +20,11 @@ for i in threadss:
 for t in threadss:
     while t.is_alive() :
         continue
+
+
+# ffmpeg concat:file1.ts|file2.ts can be used toconcat mpeg-ts streams ie .ts extension files as these files already have the demuxing info available.
+    
+lol_str = lol_str.strip('|')
+s = 'ffmpeg -i "%s" -c copy output.mp4' %(lol_str)
+subprocess.run(["powershell", "-command", "%s" %(s)] )
+print(f' done concatin ...')

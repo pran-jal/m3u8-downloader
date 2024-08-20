@@ -1,1 +1,1 @@
-url = 'https://mmxpl.vidstream.pro/EqPVJvsPWF322yVezviuGdNz9wsVp_2yQlow5Od52MBlQ9QQHH4h9fsymRbkFPyI+tzdG4991OzR6vBoACOikmeZRvMMHLtbQZaivXxFIkYzNJElHAAzltGZvw7UoiyGeRinX1o4myn55zkboURBwqd_wa04TwHgws2BU8ys+ujdBJg_yF2Rkc1ZPdqIEpxDacxb/br/hls/720/0002.ts'
+url = 'https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8'
