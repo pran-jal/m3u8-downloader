@@ -1,3 +1,5 @@
+from functools import partial
+from socketserver import BaseServer
 import requests
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import os
@@ -12,14 +14,19 @@ from functools import partial
 
 
 class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+
+    def __init__(self, data_to_serve, *args, **kwargs):
+        assert data_to_serve!=None, "parts data is required"
+        self.fakes = data_to_serve
+        super().__init__(*args, **kwargs)
     
     def do_GET(self):
         print(self.path)
         if self.path == '/index.html':
             self.path = 'index.html'
             return SimpleHTTPRequestHandler.do_GET(self)
-        # elif self.path.endswith("m3u8") or self.path.endswith(".ts"):
-        #     return self.m3u8()
+        elif self.path.endswith("m3u8"):
+            return self.m3u8()
         elif self.path.endswith(".fake"):
             return self.fake()
         
@@ -28,6 +35,9 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(f)
+
+    def m3u8(self):
+        pass
 
 
 class StreamProcessor:
@@ -48,7 +58,7 @@ class StreamProcessor:
 
 
     def download_part(self, part, endpoint):
-        thread = threading.Thread(target=self._get_part_content, name=part, args=(part, endpoint,))
+        thread = threading.Thread(target=self._get_part_content, name=part, daemon=True, args=(part, endpoint,))
         thread.start()
         self.active_threads_list[part] = thread
 
@@ -73,8 +83,10 @@ class StreamProcessor:
         self.start_download_parts()
 
 
-def generate_all_urls_from_m3u8(url):
-    master_m3u8_text = requests.get(url).text
+def generate_all_urls_from_m3u8(url, master_m3u8_text=None):
+    if master_m3u8_text == None:
+        master_m3u8_text = requests.get(url).text
+    
     a = []
     b = master_m3u8_text.split("\n")
     for i in b:
@@ -90,38 +102,48 @@ def generate_all_urls_from_m3u8(url):
     return fakes_map
 
 
+class Server:
+    data_to_serve = None
 
-def start_server():
-    server_address = ("", 8000)
-    return HTTPServer(server_address, CustomHTTPRequestHandler)
+    def start(self):
+        server_address = ("", 8000)
+        partial_handler = partial(CustomHTTPRequestHandler, self.data_to_serve)
+        self.server = HTTPServer(server_address, partial_handler)
+        self.server_thread = threading.Thread(target=server.serve_forever,daemon=True, args=()).start()
+        print(f"Now serving at: http://{server.server_address[0]}:{server.server_address[1]}")
 
+    
+    def stop(self):
+        self.server_thread.join()
+        self.server.shutdown()
+        while self.server_thread.is_alive():
+            continue
+
+    def __del__(self):
+        if self.server_thread.is_alive():
+            self.server_thread.join()
+            while self.server_thread.is_alive():
+                continue
 
 
 def download_m3u8_with_ffmpeg(m3u8_url, download_file_name):
     fakes_map = generate_all_urls_from_m3u8(m3u8_url)
     thread_processor = StreamProcessor(fakes_map)
     thread_processor.download()
+    return thread_processor
 
-    server = start_server()
-    server_thread = threading.Thread(target=server.serve_forever, args=()).start()
 
-    while not thread_processor.completed:
-        continue
-    
-    ffmpeg.input(f"http://localhost:8000/fake.part?key={key}").output(f"{download_file_name}.mp4", vcodec="copy", acodec="copy").overwrite_output().run()
-    
-    server.shutdown()
-    server_thread.
 
 
 
 if __name__ == "__main__":
-    #tested with using server. file pathe method worked fine if file is saved but what if file in in momory. that requires the use of temp server.
-    # download_m3u8_with_ffmpeg(url.url, "test5.mp4")
-    # generate_all_urls_from_m3u8("http://192.168.1.3:8000/ts_sample/index.m3u8")
-    # server = start_server()
-    # try:
-    #     print(f"Now serving at: http://{server.server_address[0]}:{server.server_address[1]}")
-    #     server.serve_forever()
-    # finally:
-    #     server.shutdown()
+    download_file_name = "test_one"
+
+
+    parts_thread = download_m3u8_with_ffmpeg(url.url)
+    server = Server(parts_thread)
+    server.start()
+    ffmpeg.input(f"http://localhost:8000/fake.m3u8").output(f"{download_file_name}.mp4", vcodec="copy", acodec="copy").overwrite_output().run()
+    server.stop()
+
+

@@ -3,13 +3,13 @@ import url
 import threading
 
 def gets(i):
-    s = 'ffmpeg -i "%s" -c copy my_vids\%d.ts -y' %(url.url.format(i), i)
+    s = 'ffmpeg -i "%s" -c copy test1\%d.ts -y' %(url.url.format(i), i)
     subprocess.run(["powershell", "-command", "%s" %(s)] )
 
 threadss = []
 lol_str = "concat:"
 for i in range (590, 654):
-    lol_str+=f"my_vids\\{i}.ts|"
+    lol_str+=f"test1\\{i}.ts|"
     t = threading.Thread(target=gets,args=(i,))
     t.start()
     threadss.append(t)
