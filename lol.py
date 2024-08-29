@@ -1,6 +1,8 @@
 
-def fetch_data(download_url: str, session: requests.Session,
-               timeout: int, file_path: str, http2: bool) -> Optional[str]:
+import requests
+
+#TODO to be used for mp4 like files
+def fetch_data(download_url: str, session: requests.Session, timeout: int, file_path: str, http2: bool):
     """
     Fetch Data from Url.
 

@@ -2,6 +2,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import os
 import threading
+import concurrent
 
 import ffmpeg
 import requests
@@ -62,7 +63,7 @@ def generate_all_urls_from_m3u8(url, master_m3u8_text=None):
             if i.startswith("http"):
                 fakes_map[f"{index}.fake"] = i
             else:
-                fakes_map[f"{index}.fake"] = f"{new_service_url_prefix}/{i}"
+                fakes_map[f"{index}.fake"] = f"{new_service_url_prefix}{i}"
             index+=1
         elif i.startswith("#EXT-X-KEY"):
             method, uri = i.split(",")
@@ -72,6 +73,7 @@ def generate_all_urls_from_m3u8(url, master_m3u8_text=None):
             # print(key.decode())
             fakes_map["key.fake"] = uri
             master_m3u8_text = master_m3u8_text.replace(i, i.replace(uri, f"key.fake"))
+    
     return fakes_map, master_m3u8_text
 
 
@@ -105,14 +107,15 @@ class StreamProcessor:
         self.active_threads_map = {}
         self.fake_parts_map = {}
         self.remaining = len(parts_map)
-        self.max_thread_count = 50
+        self.max_thread_count = 100
+
 
     def _get_part_content(self, part_name, endpoint):
         tries = 5
         host = endpoint.split("://").pop().split("/")[0]
         while tries:
             try:
-                c = requests.get(endpoint, headers={"Host": host, "Referer": "https://kwik.si/"})
+                c = requests.get(endpoint, headers={"Host": host}, timeout=200)
                 if c.status_code != 200:
                     print(f"{part_name}: failed to download. Error: {c.status_code}, {c.reason}")
                     #TODO handle retry
@@ -123,6 +126,7 @@ class StreamProcessor:
             except:
                 tries-=1
         else:
+            self.active_threads_map.pop(part_name)
             with open("report.txt", "a") as f:
                 f.write(f"failed to download: {part_name}\n")
 
@@ -134,6 +138,15 @@ class StreamProcessor:
         thread = threading.Thread(target=self._get_part_content, name=part, daemon=True, args=(part, endpoint,))
         self.active_threads_map[part] = thread
         thread.start()
+
+
+    def download_part_with_workers(self):
+        with concurrent.futures.ThreadPoolExecutor(self.max_thread_count) as executor:
+            for part, endpoint in self.parts_map.items():
+                executor.submit(self._get_part_content, part, endpoint)
+
+    def get_download_parts(self):
+        self.download_part_with_workers()
 
 
     def start_download_parts(self):
@@ -149,12 +162,11 @@ class StreamProcessor:
         while thread.is_alive():
             continue
         
-        # print(self.fake_parts_map)
-        return self.fake_parts_map[part_name]
+        return self.fake_parts_map.pop(part_name)
     
 
     def download(self):
-        self.start_download_parts()
+        self.get_download_parts()
 
 
 def download_m3u8_with_ffmpeg(fakes_map):
@@ -167,9 +179,8 @@ if __name__ == "__main__":
     download_file_name = "test_one"
     m3u8_text = requests.get(url.url).text
     headers = requests.head(url.url).headers
-    # with open("start-094.m3u8", 'r') as f:
-    #     m3u8_text = f.read()
-# 
+
+
     fakes_map, updated_m3u8_data = generate_all_urls_from_m3u8(url.url, m3u8_text)
     # print(updated_m3u8_data)
     # exit()
