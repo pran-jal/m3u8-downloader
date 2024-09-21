@@ -25,6 +25,18 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             return self.m3u8()
         elif self.path.endswith(".fake"):
             return self.fake()
+        elif self.path.endswith(".key"):
+            return self.key()
+
+
+    def key(self):
+        content = self.fakes.get_part_content(os.path.basename(self.path))
+        self.send_response(200)
+        self.send_header("content-type", "application/octet-stream")
+        self.send_header("Content-Length", len(content))
+        self.end_headers()
+        self.wfile.write(content)
+
         
     def fake(self):
         content = self.fakes.get_part_content(os.path.basename(self.path))
@@ -54,6 +66,13 @@ def generate_all_urls_from_m3u8(url, master_m3u8_text=None):
     
     new_service_url_prefix = url.replace(url.split("/").pop(), "")
     
+    # optional_data = {}
+    #                 if not optional_data.get("url_extension"):
+    #                 if len(i.split("/").pop().split('.')) == 1:
+    #                     optional_data["url_extension"] = requests.head(i).headers['Content-type'].split('/').pop()
+    #                     i+=f".{optional_data['url_extension']}"
+    #             else:
+    #                 i+=f".{optional_data['url_extension']}"
     index = 1
     fakes_map = {}
     b = master_m3u8_text.split("\n")
@@ -68,11 +87,8 @@ def generate_all_urls_from_m3u8(url, master_m3u8_text=None):
         elif i.startswith("#EXT-X-KEY"):
             method, uri = i.split(",")
             method = method.split("=").pop()
-            uri = uri.split("=").pop().strip('"')
-            key = requests.get(uri).content
-            # print(key.decode())
-            fakes_map["key.fake"] = uri
-            master_m3u8_text = master_m3u8_text.replace(i, i.replace(uri, f"key.fake"))
+            fakes_map["fake.key"] = uri.split("=").pop().strip('"')
+            master_m3u8_text = master_m3u8_text.replace(i, i.replace(uri, 'URI="fake.key"'))
     
     return fakes_map, master_m3u8_text
 
@@ -91,10 +107,14 @@ class Server:
 
     
     def stop(self):
-        self.server_thread.join()
+        if self.server_thread:
+            self.server_thread.join()
+        
+            while self.server_thread.is_alive():
+                continue
+        
         self.server.shutdown()
-        while self.server_thread.is_alive():
-            continue
+        self.server.server_close()
 
     def __del__(self):
         if self.server_thread.is_alive():
@@ -118,9 +138,11 @@ class StreamProcessor:
                 c = requests.get(endpoint, headers={"Host": host}, timeout=200)
                 if c.status_code != 200:
                     print(f"{part_name}: failed to download. Error: {c.status_code}, {c.reason}")
+                    continue
                     #TODO handle retry
                 self.fake_parts_map[part_name] = c.content
                 self.remaining-=1
+                print(end="\r")
                 print(f"{part_name} complete. {self.remaining} remaining", end="\r")
                 break
             except:
@@ -166,7 +188,8 @@ class StreamProcessor:
     
 
     def download(self):
-        self.get_download_parts()
+        # self.get_download_parts()
+        self.start_download_parts()
 
 
 def download_m3u8_with_ffmpeg(fakes_map):
@@ -176,8 +199,8 @@ def download_m3u8_with_ffmpeg(fakes_map):
 
 
 if __name__ == "__main__":
-    download_file_name = "test_one"
-    m3u8_text = requests.get(url.url).text
+    download_file_name = "test_one1"
+    m3u8_text = requests.get(url.url, headers={"Referer": "https://emturbovid.com"}).text
     headers = requests.head(url.url).headers
 
 
