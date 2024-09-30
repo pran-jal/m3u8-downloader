@@ -1,2 +1,0 @@
-url = 'https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8'
-# url = "https://eu-99.files.nextcdn.org/stream/99/02/3bb255961bb495336cb3df454dbcefe8a474426e553af6257c9aff9b2b400925/uwu.m3u8"w

@@ -17,7 +17,7 @@ class Server:
         server_address = ("", 8000)
         partial_handler = partial(CustomHTTPRequestHandler, self.parts_data_to_serve, self.updated_m3u8_data)
         self.server = HTTPServer(server_address, partial_handler)
-        self.server_thread = threading.Thread(target=self.server.serve_forever,daemon=True, args=()).start()
+        self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True, args=()).start()
         print(f"Now serving at: http://localhost:{self.server.server_address[1]}")
 
     
@@ -25,7 +25,6 @@ class Server:
     def stop(self):
         if self.server_thread:
             self.server_thread.join()
-        
             while self.server_thread.is_alive():
                 continue
         
@@ -34,6 +33,5 @@ class Server:
 
     
     def __del__(self):
-        if self.server_thread.is_alive():
+        if self.server_thread and self.server_thread.is_alive():
             self.stop()
-

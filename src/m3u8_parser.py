@@ -26,12 +26,14 @@ class M3U8Parser:
             if not tag.startswith("#") and tag:
                 self.master_m3u8_text = self.master_m3u8_text.replace(tag, f"{index}.fake")
                 if tag.startswith("http"):
-                    self.fake_sagments_map[f"{index}.fake"] = tag
+                    self.fake_segments_map[f"{index}.fake"] = tag
                 else:
-                    self.fake_sagments_map[f"{index}.fake"] = f"{self.url_prefix()}{tag}"
+                    self.fake_segments_map[f"{index}.fake"] = f"{self.url_prefix()}{tag}"
                 index+=1
             elif tag.startswith("#EXT-X-KEY"):
                 method, uri = tag.split(",")
                 method = method.split("=").pop()
-                self.fake_sagments_map["fake.key"] = uri.split("=").pop().strip('"')
+                self.fake_segments_map["fake.key"] = uri.split("=").pop().strip('"')
                 self.master_m3u8_text = self.master_m3u8_text.replace(tag, tag.replace(uri, 'URI="fake.key"'))
+
+        return self.fake_segments_map, self.master_m3u8_text
