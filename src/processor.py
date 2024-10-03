@@ -9,6 +9,7 @@ class StreamProcessor:
         self.fake_parts_map = {}
         self.remaining = len(parts_map)
         self.max_thread_count = 100
+        self.download_complete = False
 
 
     def _get_part_content(self, part_name, endpoint):
@@ -42,14 +43,18 @@ class StreamProcessor:
         self.active_threads_map[part] = thread
         thread.start()
 
+        if self.remaining == 0:
+            self.download_complete = True
 
-    def download_part_with_workers(self):
-        with concurrent.futures.ThreadPoolExecutor(self.max_thread_count) as executor:
-            for part, endpoint in self.parts_map.items():
-                executor.submit(self._get_part_content, part, endpoint)
 
-    def get_download_parts(self):
-        self.download_part_with_workers()
+    # def download_part_with_workers(self):
+    #     with concurrent.futures.ThreadPoolExecutor(self.max_thread_count) as executor:
+    #         for part, endpoint in self.parts_map.items():
+    #             executor.submit(self._get_part_content, part, endpoint)
+
+
+    # def get_download_parts(self):
+    #     self.download_part_with_workers()
 
 
     def start_download_parts(self):
@@ -69,8 +74,23 @@ class StreamProcessor:
     
 
     def download(self):
-        # self.get_download_parts()
-        self.start_download_parts()
+        if not hasattr(self, "downloader_thread"):
+            self.downloader_thread = threading.Thread(target=self.start_download_parts, name="downloader_thread", daemon=True, args=())
+            self.downloader_thread.start()
+        
+        elif self.downloader_thread.is_alive():
+                print("Already downloading...")
+
+        elif self.download_complete:
+            ans = input("Dowloading already completed. Do you wish to restart (Y/N) ?")
+            if ans in "Yy":
+                self.download_complete = False
+                self.remaining = len(self.parts_map)
+                if hasattr(self, "downloader_thread"):
+                    del self.downloader_thread
+                self.download()
+
+        
 
 
 
