@@ -19,7 +19,7 @@ class StreamProcessor:
             try:
                 c = requests.get(endpoint, headers={"Host": host}, timeout=200)
                 if c.status_code != 200:
-                    print(f"{part_name}: failed to download. Error: {c.status_code}, {c.reason}")
+                    print(f"{part_name}: failed to download. Error: {c.status_code}, {c.reason}, {self.remaining} remaining", end="\r")
                     continue
                     #TODO handle retry
                 self.fake_parts_map[part_name] = c.content

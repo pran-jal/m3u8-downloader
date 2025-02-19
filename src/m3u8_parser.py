@@ -8,14 +8,17 @@ class M3U8Parser:
         self.url = url
         self.fake_segments_map = {}
 
-
         if master_m3u8_text == None:
             master_m3u8_text = requests.get(url).text
 
         self.master_m3u8_text = master_m3u8_text
-        self.m3u8_tags = master_m3u8_text.split("\n")
-
+        self.fix_master_m3u8_text_before()
+        self.m3u8_tags = self.master_m3u8_text.split("\n")
         self.url_prefix = self.get_url_prefix()
+
+
+    def fix_master_m3u8_text_before(self):
+        self.master_m3u8_text = self.master_m3u8_text.replace("\r", "")
 
 
     def get_url_prefix(self):
