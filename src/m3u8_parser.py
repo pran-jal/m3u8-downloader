@@ -15,8 +15,10 @@ class M3U8Parser:
         self.master_m3u8_text = master_m3u8_text
         self.m3u8_tags = master_m3u8_text.split("\n")
 
+        self.url_prefix = self.get_url_prefix()
 
-    def url_prefix(self):
+
+    def get_url_prefix(self):
         return self.url.replace(self.url.split("/").pop(), "")
 
 
@@ -28,7 +30,7 @@ class M3U8Parser:
                 if tag.startswith("http"):
                     self.fake_segments_map[f"{index}.fake"] = tag
                 else:
-                    self.fake_segments_map[f"{index}.fake"] = f"{self.url_prefix()}{tag}"
+                    self.fake_segments_map[f"{index}.fake"] = f"{self.url_prefix}{tag}"
                 index+=1
             elif tag.startswith("#EXT-X-KEY"):
                 method, uri = tag.split(",")

@@ -9,13 +9,17 @@ import urlfile
 from src.utils import get_file_name_from_url
 
 
-def main(url=None):
+def main(url=None, download_file_name = None, dir_name = None):
     if not url:
         url = urlfile.url
 
-    download_file_name = get_file_name_from_url(url)
+    if not download_file_name:
+        download_file_name = get_file_name_from_url(url)
+
     headers = requests.head(url).headers
-    m3u8_text = requests.get(url, headers={"Referer": "https://emturbovid.com"}).text
+    m3u8_text = requests.get(
+        url,
+    ).text
 
     fakes_map, updated_m3u8_data = M3U8Parser(url, m3u8_text).generate_all_urls_from_m3u8()
     parts_thread = host_fakes(fakes_map)
